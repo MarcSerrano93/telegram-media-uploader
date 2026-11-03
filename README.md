@@ -1,4 +1,4 @@
-# telegram-movie-uploader
+# telegram-media-uploader
 
 Uploads a folder of movies or TV shows to a Telegram forum group, one topic per movie or show, with
 the info and images from TMDB. It has two modes, one per run:
