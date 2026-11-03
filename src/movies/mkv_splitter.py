@@ -19,7 +19,7 @@ PART_SIZE_RATIO = 0.95     # mkvmerge cuts at the first keyframe after the size 
 class MkvSplitter(PipelineStage):
     step = Step.SPLIT
     log_name = "MkvSplitter"
-    log_color = LogColor.PURPLE
+    log_color = LogColor.VIOLET
 
     def __init__(self, input_queue: Queue, output_queue: Queue, telegram_size_limit_mb: int, mkvmerge_path: str):
         super().__init__(input_queue, output_queue)

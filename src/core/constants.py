@@ -40,4 +40,5 @@ class LogColor:
     LIGHT_BLUE = "\033[94m"
     PINK = "\033[95m"
     LIGHT_CYAN = "\033[96m"
+    VIOLET = "\033[38;5;141m"
     END = "\033[0m"
