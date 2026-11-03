@@ -209,6 +209,24 @@ In Telegram, each movie has a topic named `Title (Year) {tmdb-112233}` with the 
 one message with all the files (in albums of up to 10 files, Telegram's limit). The General topic gets
 the poster with a "¡Ir a la película!" link to the topic.
 
+### Adding the existing topics to the General topic
+
+`src/general_index.py` is a one-time tool for a group that already has topics: it posts the poster of each
+one in the General topic of `movies.telegram_group`, oldest topic first, with a link to the topic.
+
+```
+python src/general_index.py --dry-run
+python src/general_index.py
+```
+
+`--dry-run` only lists what would be posted, so check the group name and the count first. The posts are
+silent and reuse the photos, so nothing is uploaded again. Telegram limits how fast messages can be
+sent, so thousands of topics can take hours.
+
+If it stops, run it again: it reads the General topic and skips the topics already linked there. Do not
+upload movies to that group while it runs, or they would land out of order. Topics without a
+`{tmdb-<id>}` tag or without a poster are skipped and listed at the end.
+
 ### Result in TV mode
 
 Each show has a topic named `Name (Year) {tmdb-1396}`, with the English name, containing the backdrop
@@ -246,6 +264,7 @@ pytest
 | File | Description |
 |---|---|
 | `src/main.py` | Entry point: reads the mode, loads the config and runs the pipeline of the mode |
+| `src/general_index.py` | One-time tool: posts every existing movie topic in the General topic |
 | **`src/core/`** | **Shared by every mode** |
 | `config.py` | Loads and validates `config.json` and `.env` |
 | `pipeline_stage.py` | Base class of the stages, each one a thread connected by queues |
