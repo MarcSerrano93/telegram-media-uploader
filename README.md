@@ -205,6 +205,13 @@ destination folder.
 On Windows, the full path of each part must fit in 259 characters. If the destination folder, the source
 file name and the TMDB title together are too long, the movie stops with a `Path too long` error.
 
+Telegram changes file names longer than 64 bytes (an accented letter takes 2): spaces become `_` and
+the end is cut, which could drop the `ptN` that Plex needs. So every name sent to Telegram is kept
+within 64 bytes by cutting the title after its last whole word, keeping the year, the `{tmdb-<id>}` tag
+and the part number, e.g. `Una película con un título (2024) {tmdb-1} pt1.mkv`. The files on disk keep
+their own names; only the parts are named this way. Long TV episode names are cut the same way, keeping
+their `1x01` number.
+
 In Telegram, each movie has a topic named `Title (Year) {tmdb-112233}` with the poster message and
 one message with all the files (in albums of up to 10 files, Telegram's limit). The General topic gets
 the poster with a "¡Ir a la película!" link to the topic.

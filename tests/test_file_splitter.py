@@ -78,6 +78,16 @@ def test_big_file_is_split_and_original_kept(make_movie, destination):
     assert not os.path.exists(f"{folder}.partial")
     assert movie.status == FileStatus.SPLIT
 
+def test_long_title_is_cut_so_the_part_names_fit_in_telegram(make_movie, destination):
+    movie = make_movie("Long (2024) {tmdb-1}.mkv", size=MB + 1, title="Una película con un título larguísimo que no cabe en Telegram")
+
+    run_splitter([movie], destination)
+
+    parts = sorted(os.listdir(destination / "Long (2024) {tmdb-1}" / "zip_files"))
+    assert parts == ["Una película con un título larguísimo que no (2024).zip.001",
+                     "Una película con un título larguísimo que no (2024).zip.002"]
+    assert all(len(part.encode()) <= utils.TELEGRAM_FILE_NAME_MAX_BYTES for part in parts)
+
 def test_parts_contain_the_movie(make_movie, destination, tmp_path):
     movie = make_movie("Big (2024) {tmdb-1}.mkv", size=MB + 1, title="Big")
     run_splitter([movie], destination)

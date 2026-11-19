@@ -148,6 +148,17 @@ def test_percent_is_removed_from_the_output_name(fake_mkvmerge, make_movie, tmp_
 
     assert sorted(os.listdir(movie.mkv_parts_path))[0] == "100. Wolf (2024) {tmdb-1} pt1.mkv"
 
+def test_long_title_is_cut_but_keeps_the_tag_and_the_part_number(fake_mkvmerge, big_movie):
+    big_movie.title = "Una película con un título larguísimo que no cabe en Telegram"
+
+    run_splitter([big_movie])
+
+    parts = sorted(os.listdir(big_movie.mkv_parts_path))
+    assert parts == ["Una película con un título (2024) {tmdb-1} pt1.mkv",
+                     "Una película con un título (2024) {tmdb-1} pt2.mkv"]
+    # Room is kept for parts up to pt99
+    assert len(parts[0].replace("pt1", "pt99").encode()) <= utils.TELEGRAM_FILE_NAME_MAX_BYTES
+
 def test_part_over_the_limit_fails_without_retrying(fake_mkvmerge, big_movie):
     fake_mkvmerge.part_sizes = [MB + 1]
 

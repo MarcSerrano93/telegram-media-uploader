@@ -9,6 +9,8 @@ from core import shared_state
 from core.constants import FileStatus, LogColor, Step, MAX_ATTEMPTS, RETRY_DELAYS
 
 MAX_PATH_LENGTH = 259 if os.name == "nt" else None   # Windows limit for the full path of a file
+# Telegram changes longer file names: spaces and "-" become "_", "()" are removed and the end is cut (e.g. " pt1")
+TELEGRAM_FILE_NAME_MAX_BYTES = 64
 
 class PermanentError(Exception):
     """
@@ -22,6 +24,22 @@ def check_path_length(path):
     length = len(os.path.realpath(path))
     if MAX_PATH_LENGTH and length > MAX_PATH_LENGTH:
         raise PermanentError(f"Path too long ({length} characters, the Windows limit is {MAX_PATH_LENGTH}): shorten the destination folder or the file name: {path}")
+
+def shorten_for_telegram(text, suffix):
+    """
+    Returns text cut so that text + suffix fits in Telegram's file name limit, which counts UTF-8 bytes ("é" is 2).
+    It is cut after the last whole word that fits.
+    """
+    room = max(TELEGRAM_FILE_NAME_MAX_BYTES - len(suffix.encode()), 0)
+    if len(text.encode()) <= room:
+        return text
+    # One byte more, to know if the last word that fits is whole. errors="ignore" drops a letter cut in half
+    cut = text.encode()[:room + 1].decode(errors="ignore")
+    if " " in cut:
+        cut = cut.rsplit(" ", 1)[0]
+    else:
+        cut = text.encode()[:room].decode(errors="ignore")
+    return cut.rstrip(" .-")
 
 def report_failure(step: Step, file_name, reason):
     """

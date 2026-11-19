@@ -42,6 +42,28 @@ def failing(errors, result="ok"):
         return result
     return operation, calls
 
+def test_text_that_fits_is_not_cut():
+    assert utils.shorten_for_telegram("Movie", " (2024).zip.001") == "Movie"
+
+def test_text_is_cut_to_fit_with_its_suffix():
+    suffix = " (2024).zip.001"
+
+    text = utils.shorten_for_telegram("x" * 100, suffix)
+
+    assert len((text + suffix).encode()) == utils.TELEGRAM_FILE_NAME_MAX_BYTES
+
+def test_accented_letters_count_as_two_bytes_and_are_not_cut_in_half():
+    text = utils.shorten_for_telegram("é" * 40, ".mkv")
+
+    assert text == "é" * 30
+    assert len((text + ".mkv").encode()) <= utils.TELEGRAM_FILE_NAME_MAX_BYTES
+
+def test_text_is_cut_after_the_last_whole_word():
+    assert utils.shorten_for_telegram("x" * 50 + " word another", ".mkv") == "x" * 50 + " word"
+
+def test_cut_text_does_not_end_in_a_space_a_dot_or_a_dash():
+    assert utils.shorten_for_telegram("1x01 -" + " x" * 40, "y" * 58) == "1x01"
+
 def test_retry_succeeds_after_temporary_errors():
     operation, calls = failing([OSError("locked"), ConnectionError("down")])
     assert with_retries(Step.SPLIT, "a.mkv", operation) == "ok"

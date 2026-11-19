@@ -6,6 +6,7 @@ import re
 
 from core.constants import FileStatus
 from core.tmdb import parse_tmdb_id
+from core.utils import TELEGRAM_FILE_NAME_MAX_BYTES, shorten_for_telegram
 
 CAPTION_MAX_GENRES = 5
 INVALID_FILE_NAME_CHARS = r'[<>:"/\\|?*]'
@@ -47,11 +48,24 @@ class Movie:
         self.poster_path = poster_path
         self.status = FileStatus.PARSED
 
-    def get_file_title(self):
+    def get_file_title(self, suffix=""):
         """
-        Returns the base name of the parts of the movie: "Title (Year)", without characters not allowed in file names.
+        Returns the base name of the files of the movie: "Title (Year)", without characters not allowed in file names.
+        The title is cut so that the name followed by suffix (e.g. ".zip.001") fits in Telegram's file name limit.
         """
-        return f"{re.sub(INVALID_FILE_NAME_CHARS, '.', self.title)} ({self.year})"
+        year = f" ({self.year})"
+        title = shorten_for_telegram(re.sub(INVALID_FILE_NAME_CHARS, '.', self.title), year + suffix)
+        return title + year
+
+    def get_telegram_file_name(self):
+        """
+        Returns the name of the whole movie file in Telegram: its own name, or "Title (Year) {tmdb-<id>}.ext" with the
+        title cut if it does not fit in Telegram's file name limit.
+        """
+        if len(self.file_name.encode()) <= TELEGRAM_FILE_NAME_MAX_BYTES:
+            return self.file_name
+        end = f" {{tmdb-{self.tmdb_id}}}{os.path.splitext(self.file_name)[1]}"
+        return self.get_file_title(end) + end
 
     def generate_telegram_poster_caption(self, topic_link=None):
         """

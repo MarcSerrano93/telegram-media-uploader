@@ -16,9 +16,11 @@ MEDIA_PATH = os.path.join(PROJECT_ROOT, "media")
 DEFAULT_BACKDROP = os.path.join(MEDIA_PATH, "no-media-banner.png")
 DEFAULT_POSTER = os.path.join(MEDIA_PATH, "no-media-poster.png")
 IMAGE_URL_ERRORS = (WebpageMediaEmptyError, WebpageCurlFailedError)   # Telegram could not download the image from TMDB
+TOPIC_ICON_TV = 5350513667144163474     # 📺, from Telegram's topic icons
 
 class ShowTelegramApiClient(TelegramApiClient):
     log_name = "ShowTelegramApiClient"
+    topic_icon = TOPIC_ICON_TV
 
     def _has_backdrop(self, messages):
         return any(message.photo and (message.message or "").startswith(BACKDROP_CAPTION_START) for message in messages)

@@ -18,10 +18,10 @@ from telethon.tl.types import ForumTopic, UpdateNewChannelMessage
 
 from core.constants import Step, LogColor, PROJECT_ROOT
 from core.pipeline_stage import PipelineStage
-from core.utils import with_retries_async, format_size, format_duration
+from core.utils import with_retries_async, format_size, format_duration, shorten_for_telegram
 
 SESSION_PATH = os.path.join(PROJECT_ROOT, "uploader")   # uploader.session, keeps the Telegram login
-TOPIC_ICON_EMOJI_ID = 5368653135101310687
+TOPIC_ICON_MOVIE = 5368653135101310687         # 🎬, from Telegram's topic icons
 TOPIC_TITLE_MAX_LENGTH = 128
 ALBUM_MAX_FILES = 10                            # Telegram limit of files per album
 PROGRESS_STEP_PERCENT = 10
@@ -40,6 +40,7 @@ class TelegramApiClient(PipelineStage):
     step = Step.UPLOAD
     log_name = "TelegramApiClient"
     log_color = LogColor.LIGHT_CYAN
+    topic_icon = TOPIC_ICON_MOVIE
 
     def __init__(self, input_queue: Queue, telegram_group):
         super().__init__(input_queue)
@@ -89,7 +90,7 @@ class TelegramApiClient(PipelineStage):
         response = await client(CreateForumTopicRequest(
             peer=supergroup,
             title=topic_name,
-            icon_emoji_id=TOPIC_ICON_EMOJI_ID,
+            icon_emoji_id=self.topic_icon,
         ))
         for update in response.updates:
             if isinstance(update, UpdateNewChannelMessage):
@@ -119,13 +120,20 @@ class TelegramApiClient(PipelineStage):
             self.log(f"\"{file_name}\" ({part_label}): {step * PROGRESS_STEP_PERCENT}% - {format_size(current)} of {format_size(total)} - {format_size(speed)}/s")
         return print_progress
 
-    async def _upload_part(self, client, file_path, part_label):
+    def _get_telegram_file_name(self, item, file_name):
+        """
+        Returns the name the file gets in Telegram: its own name, or with the end of its name cut (before the extension)
+        if it does not fit in Telegram's file name limit. The file on disk keeps its name.
+        """
+        stem, extension = os.path.splitext(file_name)
+        return shorten_for_telegram(stem, extension) + extension
+
+    async def _upload_part(self, client, file_path, telegram_name, part_label):
         """
         Uploads the file in parallel with FastTelethon. It is not visible in Telegram until it is sent in a message.
         """
-        file_name = os.path.basename(file_path)
         with open(file_path, "rb") as f:
-            return await upload_file(client, f, file_name, self._make_progress_printer(file_name, part_label))
+            return await upload_file(client, f, telegram_name, self._make_progress_printer(telegram_name, part_label))
 
     async def _send_album(self, client, supergroup, topic_id, file_names, uploaded_files):
         # Checked on every attempt, in case a previous one was sent but its response was lost
@@ -140,8 +148,10 @@ class TelegramApiClient(PipelineStage):
         """
         Uploads the files of folder that are not in sent_files, in order and in albums of up to 10.
         label: what is uploaded, for the logs (e.g. "movie: <title>").
+        Files are uploaded and recognized by their Telegram name, see _get_telegram_file_name.
         """
-        pending = [name for name in file_names if name not in sent_files]
+        telegram_names = {name: self._get_telegram_file_name(item, name) for name in file_names}
+        pending = [name for name in file_names if telegram_names[name] not in sent_files]
         if not pending:
             self.log(f"{label}: all {len(file_names)} file(s) already in Telegram, nothing to upload")
             return
@@ -157,9 +167,10 @@ class TelegramApiClient(PipelineStage):
             for name in album_names:
                 file_path = os.path.join(folder, name)
                 part_label = f"file {file_names.index(name) + 1}/{len(file_names)}"
-                uploaded_files.append(await self._retry(item, lambda: self._upload_part(client, file_path, part_label)))
+                uploaded_files.append(await self._retry(item, lambda: self._upload_part(client, file_path, telegram_names[name], part_label)))
                 total_size += os.path.getsize(file_path)
-            await self._retry(item, lambda: self._send_album(client, supergroup, topic_id, album_names, uploaded_files))
+            album_telegram_names = [telegram_names[name] for name in album_names]
+            await self._retry(item, lambda: self._send_album(client, supergroup, topic_id, album_telegram_names, uploaded_files))
         elapsed_time = max(time.time() - start_time, 0.001)
         self.log(f"{label} uploaded in {format_duration(elapsed_time)} ({format_size(total_size)}, {format_size(total_size / elapsed_time)}/s)")
 

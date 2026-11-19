@@ -35,8 +35,9 @@ class MkvSplitter(PipelineStage):
         shutil.rmtree(tmp_path, ignore_errors=True)
         os.makedirs(tmp_path)
 
-        # mkvmerge reads % in the output name as a number format
-        base_name = f"{movie.get_file_title()} {{tmdb-{movie.tmdb_id}}}".replace("%", ".")
+        # mkvmerge reads % in the output name as a number format. Room is kept for " pt99.mkv"
+        tag = f" {{tmdb-{movie.tmdb_id}}}"
+        base_name = f"{movie.get_file_title(tag + ' pt99.mkv')}{tag}".replace("%", ".")
         self.log(f"Creating MKV parts of \"{movie.file_name}\" ({format_size(os.path.getsize(movie.file_full_path))})...")
         start_time = time.time()
         part_size_mb = max(int(self.telegram_size_limit_mb * PART_SIZE_RATIO), 1)

@@ -34,7 +34,7 @@ class FileSplitter(PipelineStage):
         shutil.rmtree(tmp_path, ignore_errors=True)
         os.makedirs(tmp_path)
 
-        archive_path = os.path.join(tmp_path, f"{movie.get_file_title()}.zip")
+        archive_path = os.path.join(tmp_path, f"{movie.get_file_title('.zip.001')}.zip")
         self.log(f"Splitting \"{movie.file_name}\" ({format_size(os.path.getsize(movie.file_full_path))})...")
         start_time = time.time()
         parts = create_split_zip(movie.file_full_path, archive_path, self.telegram_size_limit_mb * 1024 * 1024)

@@ -110,6 +110,7 @@ class FakeTelegram:
             return SimpleNamespace(topics=topics, messages=messages)
         if isinstance(request, CreateForumTopicRequest):
             topic = self.add_topic(request.title, request.peer)
+            topic.icon = request.icon_emoji_id
             return SimpleNamespace(updates=[FakeUpdate(topic.id)])
         raise NotImplementedError(request)
 

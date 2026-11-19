@@ -13,8 +13,8 @@ from telethon.errors import ForbiddenError
 from conftest import FakeGroup, warning_reasons
 from core import shared_state
 from core.constants import FileStatus
-from core.telegram_api_client import TOPIC_TITLE_MAX_LENGTH
-from core.utils import PermanentError
+from core.telegram_api_client import TOPIC_ICON_MOVIE, TOPIC_TITLE_MAX_LENGTH
+from core.utils import TELEGRAM_FILE_NAME_MAX_BYTES, PermanentError
 from movies import telegram_api_client as movies_telegram_api_client
 from movies.telegram_api_client import MovieTelegramApiClient
 
@@ -93,6 +93,36 @@ def test_small_movie_can_be_uploaded_again_after_a_failure(telegram, small_movie
 
     assert telegram.sent_albums == [[small_movie.file_name]]
     assert small_movie.status == FileStatus.UPLOADED
+
+LONG_TITLE = "Una película con un título larguísimo que no cabe en Telegram"
+LONG_FILE_NAME = f"{LONG_TITLE} (2024) {{tmdb-1}}.mkv"
+
+def test_small_movie_with_a_long_name_keeps_its_tag_in_telegram(telegram, make_movie, tmp_path):
+    movie = make_movie(LONG_FILE_NAME, title=LONG_TITLE)
+    movie.destination_path = str(tmp_path / "destination" / "Long")
+
+    upload(telegram, movie)
+
+    [[sent_name]] = telegram.sent_albums
+    assert sent_name == "Una película con un título larguísimo que (2024) {tmdb-1}.mkv"
+    assert len(sent_name.encode()) <= TELEGRAM_FILE_NAME_MAX_BYTES
+    # Only the name in Telegram changes, the file keeps its own
+    assert os.path.isfile(os.path.join(movie.destination_path, LONG_FILE_NAME))
+
+def test_small_movie_with_a_long_name_is_not_uploaded_twice(telegram, make_movie, tmp_path):
+    movie = make_movie(LONG_FILE_NAME, title=LONG_TITLE)
+    movie.destination_path = str(tmp_path / "destination" / "Long")
+    telegram.lost_album_responses = 1
+
+    upload(telegram, movie)
+
+    assert len(telegram.sent_albums) == 1
+
+def test_movie_topic_has_the_movie_icon(telegram, split_movie):
+    upload(telegram, split_movie())
+
+    [topic] = telegram.topics.values()
+    assert topic.icon == TOPIC_ICON_MOVIE
 
 def test_more_than_10_files_are_sent_in_several_albums(telegram, split_movie):
     upload(telegram, split_movie(parts=12))

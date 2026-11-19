@@ -21,6 +21,12 @@ class MovieTelegramApiClient(TelegramApiClient):
         super().__init__(input_queue, telegram_group)
         self.mkv_parts_telegram_group = mkv_parts_telegram_group
 
+    def _get_telegram_file_name(self, movie: Movie, file_name):
+        # The whole movie keeps its year and {tmdb-<id>} tag when its name is too long. Parts are named to fit
+        if file_name == movie.file_name:
+            return movie.get_telegram_file_name()
+        return super()._get_telegram_file_name(movie, file_name)
+
     def _has_poster(self, messages):
         return any(message.photo or (message.message or "").startswith(POSTER_CAPTION_START) for message in messages)
 

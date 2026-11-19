@@ -10,7 +10,7 @@ import pytest
 from conftest import warning_reasons
 from core.constants import FileStatus
 from tv.show import Season, Show
-from tv.telegram_api_client import DEFAULT_BACKDROP, DEFAULT_POSTER, ShowTelegramApiClient
+from tv.telegram_api_client import DEFAULT_BACKDROP, DEFAULT_POSTER, TOPIC_ICON_TV, ShowTelegramApiClient
 
 BACKDROP_URL = "https://image.tmdb.org/t/p/w1280/backdrop.jpg"
 POSTER_URL = "https://image.tmdb.org/t/p/w500/poster.jpg"
@@ -153,6 +153,26 @@ def test_everything_already_uploaded(telegram, make_show):
     assert len(topic.messages) == 2
     assert telegram.general == []
     assert show.status == FileStatus.UPLOADED
+
+def test_show_topic_has_the_tv_icon(telegram, make_show):
+    upload(telegram, make_show())
+
+    [topic] = telegram.topics.values()
+    assert topic.icon == TOPIC_ICON_TV
+
+def test_long_episode_name_is_cut_but_keeps_its_number(telegram, tmp_path):
+    folder = tmp_path / "Show (2020) {tmdb-7}"
+    folder.mkdir()
+    name = "1x01 - Un episodio con un título tan largo que Telegram lo cambiaría.mkv"
+    (folder / name).write_bytes(b"episode")
+    show = Show(str(folder), {1: [name]})
+    show.set_show_metadata("Show", "Serie", "2020", BACKDROP_URL, POSTER_URL, {1: Season(1, 1, POSTER_URL)})
+
+    upload(telegram, show)
+    upload(telegram, show)
+
+    assert telegram.sent_albums == [["1x01 - Un episodio con un título tan largo que Telegram lo.mkv"]]
+    assert (folder / name).is_file()
 
 def test_every_message_inside_the_topic_is_silent(telegram, make_show):
     upload(telegram, make_show({1: 2}))
